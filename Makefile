@@ -21,6 +21,7 @@ PYTEST ?= py.test
 PYTESTFILES ?= test
 
 VERSION   = $(shell sed -n -e 's/.*LXW_VERSION \"\(.*\)\"/\1/p'   include/xlsxwriter.h)
+SOVERSION = $(shell sed -n -e 's/.*LXW_SOVERSION \"\(.*\)\"/\1/p' include/xlsxwriter.h)
 
 .PHONY: docs tags examples third_party
 
@@ -50,16 +51,17 @@ universal_binary :
 	$(Q)$(MAKE) clean
 	$(Q)TARGET_ARCH="-target x86_64-apple-macos10.12" $(MAKE) all
 	$(Q)mv lib/libxlsxwriter.a     libxlsxwriter_x86_64.a
-	$(Q)mv lib/libxlsxwriter.dylib libxlsxwriter_x86_64.dylib
+	$(Q)mv lib/libxlsxwriter.$(SOVERSION).dylib libxlsxwriter_x86_64.dylib
 
 	$(Q)$(MAKE) clean
 	$(Q)TARGET_ARCH="-target arm64-apple-macos11" $(MAKE) all
 	$(Q)mv lib/libxlsxwriter.a     lib/libxlsxwriter_arm64.a
-	$(Q)mv lib/libxlsxwriter.dylib lib/libxlsxwriter_arm64.dylib
+	$(Q)mv lib/libxlsxwriter.$(SOVERSION).dylib lib/libxlsxwriter_arm64.dylib
 	$(Q)mv libxlsxwriter_x86_64.a libxlsxwriter_x86_64.dylib lib
 
-	$(Q)lipo -create -output lib/libxlsxwriter.a     lib/libxlsxwriter_x86_64.a     lib/libxlsxwriter_arm64.a
-	$(Q)lipo -create -output lib/libxlsxwriter.dylib lib/libxlsxwriter_x86_64.dylib lib/libxlsxwriter_arm64.dylib
+	$(Q)lipo -create -output lib/libxlsxwriter.a                  lib/libxlsxwriter_x86_64.a     lib/libxlsxwriter_arm64.a
+	$(Q)lipo -create -output lib/libxlsxwriter.$(SOVERSION).dylib lib/libxlsxwriter_x86_64.dylib lib/libxlsxwriter_arm64.dylib
+	$(Q)rm -f lib/libxlsxwriter_x86_64.* lib/libxlsxwriter_arm64.*
 
 # Build the example programs.
 examples : all
@@ -70,6 +72,7 @@ clean :
 	$(Q)$(MAKE) clean -C src
 	$(Q)$(MAKE) clean -C test/unit
 	$(Q)$(MAKE) clean -C test/functional/src
+	$(Q)$(MAKE) clean -C test/cpp
 	$(Q)$(MAKE) clean -C examples
 	$(Q)rm -rf docs/html
 	$(Q)rm -rf test/functional/__pycache__
@@ -80,8 +83,13 @@ clean :
 	$(Q)$(MAKE) clean -C third_party/md5
 	$(Q)$(MAKE) clean -C third_party/dtoa
 
+# Clean src and lib dir only, as a precursor for static analysis.
+clean_src :
+	$(Q)$(MAKE) clean -C src
+	$(Q)rm -f  lib/*
+
 # Run the unit tests.
-test : all test_unit test_functional
+test : all test_cpp test_unit test_functional
 
 # Test for C++ const correctness on APIs.
 test_const : all
@@ -98,6 +106,10 @@ test_functional : all
 test_unit : all
 	$(Q)$(MAKE) -C src test_lib
 	$(Q)$(MAKE) -C test/unit test
+
+# Test C++ compilation.
+test_cpp : all
+	$(Q)$(MAKE) -C test/cpp
 
 # Test Cmake. This test should really be done with Cmake in the cmake dir but
 # this is a workaround for now.
@@ -163,9 +175,7 @@ strip:
 	$(Q)strip lib/*
 
 # Run a coverity static analysis.
-coverity: all
-	$(Q)$(MAKE) -C src clean
-	$(Q)rm -f  lib/*
+coverity: clean_src third_party
 	$(Q)rm -rf  cov-int
 	$(Q)rm -f libxlsxwriter-coverity.tgz
 	$(Q)../../cov-analysis-linux64-2019.03/bin/cov-build --dir cov-int make -C src libxlsxwriter.a
@@ -229,9 +239,7 @@ endif
 
 
 # Run a scan-build static analysis.
-scan_build: all
-	$(Q)$(MAKE) -C src clean
-	$(Q)rm -f  lib/*
+scan_build: clean_src third_party
 	$(Q)scan-build make -C src libxlsxwriter.a
 	$(Q)$(MAKE) -C src clean
 	$(Q)rm -f  lib/*

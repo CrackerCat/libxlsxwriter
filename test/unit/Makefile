@@ -43,6 +43,7 @@ SRCS += $(wildcard chartsheet/test*.c)
 SRCS += $(wildcard vml/test*.c)
 SRCS += $(wildcard comment/test*.c)
 SRCS += $(wildcard metadata/test*.c)
+SRCS += $(wildcard table/test*.c)
 # End of SRCS
 
 OBJS  = $(patsubst %.c,%.o,$(SRCS))
@@ -79,6 +80,7 @@ all :
 	$(Q)$(MAKE) -C vml
 	$(Q)$(MAKE) -C comment
 	$(Q)$(MAKE) -C metadata
+	$(Q)$(MAKE) -C table
 # END make all
 
 clean :
@@ -100,6 +102,7 @@ clean :
 	$(Q)$(MAKE) clean -C vml
 	$(Q)$(MAKE) clean -C comment
 	$(Q)$(MAKE) clean -C metadata
+	$(Q)$(MAKE) clean -C table
 # END make clean
 
 
